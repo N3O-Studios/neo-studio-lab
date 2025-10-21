@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { Wrench } from "lucide-react";
 
 interface HeroProps {
   onOpenToolHub: () => void;
@@ -44,17 +44,10 @@ export const Hero = ({ onOpenToolHub }: HeroProps) => {
             size="lg"
             className="group relative overflow-hidden bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-6 text-lg font-semibold rounded-xl shadow-glow transition-all hover:scale-105 hover:shadow-[0_0_40px_hsl(270_36%_71%/0.5)]"
           >
-            <MessageSquare className="mr-2 h-5 w-5" />
-            Open Tool Hub
+            <Wrench className="mr-2 h-5 w-5" />
+            Tool Hub
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
           </Button>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-primary/50 flex items-start justify-center p-2">
-            <div className="w-1 h-2 bg-primary rounded-full" />
-          </div>
         </div>
       </div>
     </section>

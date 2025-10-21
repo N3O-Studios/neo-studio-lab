@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Hero } from "@/components/Hero";
 import { ToolHub } from "@/components/ToolHub";
-import { NewsSection } from "@/components/NewsSection";
+import { Biography } from "@/components/Biography";
 import { Footer } from "@/components/Footer";
 
 const Index = () => {
@@ -10,7 +10,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Hero onOpenToolHub={() => setIsToolHubOpen(true)} />
-      <NewsSection />
+      <Biography />
       <Footer />
       <ToolHub isOpen={isToolHubOpen} onClose={() => setIsToolHubOpen(false)} />
     </div>
