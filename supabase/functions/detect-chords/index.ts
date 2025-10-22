@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -11,10 +12,10 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { audioData, fileName } = await req.json();
     
-    if (!prompt) {
-      throw new Error('No prompt provided');
+    if (!audioData) {
+      throw new Error('No audio data provided');
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -22,8 +23,9 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating cover art with prompt:', prompt);
+    console.log('Detecting chords from audio:', fileName);
 
+    // Use Lovable AI with audio analysis capabilities
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -31,14 +33,28 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
+            role: 'system',
+            content: 'You are a music theory expert specializing in chord detection and analysis. Analyze audio and provide detailed chord progressions with timestamps.'
+          },
+          {
             role: 'user',
-            content: `Generate professional album cover art: ${prompt}. Make it artistic, high quality, and suitable for music albums.`
+            content: [
+              {
+                type: 'text',
+                text: 'Analyze this audio file and detect the chord progression. Provide: 1) Main key, 2) Chord progression with approximate timestamps, 3) Tempo (BPM), 4) Time signature. Format as JSON.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: audioData
+                }
+              }
+            ]
           }
-        ],
-        modalities: ['image', 'text']
+        ]
       })
     });
 
@@ -61,28 +77,31 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: 'Failed to generate image' }),
+        JSON.stringify({ error: 'Failed to detect chords' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
-    console.log('AI Gateway response received');
-
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!imageUrl) {
-      throw new Error('No image data in response');
+    const analysisText = data.choices?.[0]?.message?.content;
+    
+    if (!analysisText) {
+      throw new Error('No analysis in response');
     }
 
+    console.log('Chord detection completed');
+
     return new Response(
-      JSON.stringify({ image: imageUrl }),
+      JSON.stringify({ 
+        analysis: analysisText,
+        success: true 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in generate-cover-art function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('Error in detect-chords function:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

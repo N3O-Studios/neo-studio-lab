@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Wand2, Music, Newspaper, MessageSquare, Send, Loader2, ExternalLink } from "lucide-react";
+import { X, Wand2, Music, Newspaper, MessageSquare, Send, Loader2, ExternalLink, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ToolHubFullscreen } from "./ToolHubFullscreen";
 
 interface ToolHubProps {
   isOpen: boolean;
@@ -38,7 +39,11 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loadingNews, setLoadingNews] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [chordAnalysis, setChordAnalysis] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,45 +81,15 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
   const handleToolSelect = (tool: Tool) => {
     setSelectedTool(tool);
-    if (tool === "chord-detector") {
-      toast({
-        title: "Tool Under Development",
-        description: "Sorry! The Chord Detector Tool is WIP.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: Message = { role: "user", content: inputMessage };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages([userMessage]);
     setInputMessage("");
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: [...messages, userMessage] }
-      });
-
-      if (error) throw error;
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.reply || "Sorry, I couldn't process that."
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    setShowFullscreen(true);
   };
 
   const handleGenerateCoverArt = async () => {
@@ -148,6 +123,80 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
       setIsLoading(false);
     }
   };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ['audio/wav', 'audio/mpeg', 'audio/flac', 'audio/x-flac'];
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(wav|mp3|flac)$/i)) {
+        toast({
+          title: "Invalid File",
+          description: "Please upload a WAV, MP3, or FLAC file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setAudioFile(file);
+    }
+  };
+
+  const handleDetectChords = async () => {
+    if (!audioFile || isLoading) return;
+
+    setIsLoading(true);
+    setChordAnalysis(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Audio = reader.result as string;
+
+        const { data, error } = await supabase.functions.invoke('detect-chords', {
+          body: { 
+            audioData: base64Audio,
+            fileName: audioFile.name
+          }
+        });
+
+        if (error) throw error;
+
+        if (data.analysis) {
+          setChordAnalysis(data.analysis);
+          toast({
+            title: "Analysis Complete",
+            description: "Chord detection completed successfully!",
+          });
+        }
+        setIsLoading(false);
+      };
+      reader.readAsDataURL(audioFile);
+    } catch (error) {
+      console.error('Error detecting chords:', error);
+      toast({
+        title: "Error",
+        description: "Failed to detect chords. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
+  if (showFullscreen) {
+    return (
+      <ToolHubFullscreen
+        isOpen={showFullscreen}
+        onClose={() => {
+          setShowFullscreen(false);
+          onClose();
+        }}
+        initialMessages={messages}
+        onBackToTools={() => {
+          setShowFullscreen(false);
+          setMessages([]);
+        }}
+      />
+    );
+  }
 
   if (!isOpen) return null;
 
@@ -229,64 +278,40 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
           <div className="flex-1 flex flex-col backdrop-blur-sm overflow-hidden">
             {/* Chat */}
             {selectedTool === "chat" && (
-              <div className="flex-1 flex flex-col p-6">
-                <div className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-background/30 rounded-lg border border-border/50">
-                  {messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-center text-muted-foreground">
-                      <div>
-                        <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Start chatting with NS!</p>
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[80%] p-3 rounded-lg ${
-                            msg.role === "user"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-card border border-border/50"
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-card border border-border/50 p-3 rounded-lg">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
+              <div className="flex-1 flex flex-col p-6 items-center justify-center">
+                <div className="w-full max-w-2xl space-y-6">
+                  <div className="text-center space-y-2">
+                    <MessageSquare className="h-16 w-16 mx-auto text-primary opacity-50" />
+                    <h3 className="text-2xl font-bold">Chat with NS</h3>
+                    <p className="text-muted-foreground">
+                      Your AI music production assistant
+                    </p>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Textarea
-                    placeholder="Ask NS anything about music..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    className="min-h-[60px] max-h-[120px] bg-background/50 border-border/50 focus:border-primary resize-none"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim()}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  <div className="space-y-4">
+                    <Textarea
+                      placeholder="Ask NS anything about music production, mixing, sound design..."
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      className="min-h-[120px] resize-none focus:ring-2 focus:ring-primary focus:shadow-glow transition-all bg-background/50"
+                      disabled={isLoading}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={isLoading || !inputMessage.trim()}
+                      className="w-full bg-primary hover:bg-primary/90"
+                      size="lg"
+                    >
+                      <Send className="mr-2 h-5 w-5" />
+                      Start Conversation
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -345,19 +370,60 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
             {/* Chord Detector */}
             {selectedTool === "chord-detector" && (
-              <div className="flex-1 flex items-center justify-center p-6">
-                <Card className="p-8 text-center max-w-md bg-card/50 border-primary/20">
-                  <Music className="h-16 w-16 mx-auto mb-4 text-secondary" />
+              <div className="flex-1 flex flex-col p-6 space-y-4">
+                <div>
                   <h3 className="text-xl font-bold mb-2">Chord Detector</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Upload audio files to detect and analyse musical chords automatically.
+                  <p className="text-muted-foreground">
+                    Upload an audio file (WAV, MP3, or FLAC) to detect chords.
                   </p>
-                  <Alert className="border-destructive/50 bg-destructive/10">
-                    <AlertDescription>
-                      Sorry! The Chord Detector Tool is WIP.
-                    </AlertDescription>
-                  </Alert>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".wav,.mp3,.flac,audio/wav,audio/mpeg,audio/flac"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                <Card className="p-6 border-dashed border-2 border-border/50 hover:border-primary/50 transition-colors">
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {audioFile ? audioFile.name : 'Select Audio File'}
+                  </Button>
                 </Card>
+
+                {audioFile && (
+                  <Button
+                    onClick={handleDetectChords}
+                    disabled={isLoading}
+                    className="w-full bg-primary hover:bg-primary/90"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Music className="mr-2 h-4 w-4" />
+                        Detect Chords
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {chordAnalysis && (
+                  <Card className="flex-1 overflow-auto p-4 bg-card/50">
+                    <h4 className="font-semibold mb-2">Analysis Results:</h4>
+                    <pre className="whitespace-pre-wrap text-sm">{chordAnalysis}</pre>
+                  </Card>
+                )}
               </div>
             )}
 
