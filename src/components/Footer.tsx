@@ -1,4 +1,4 @@
-import { Youtube, Twitter } from "lucide-react";
+import { Youtube, Twitter, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -72,6 +72,17 @@ export const Footer = () => {
                 >
                   <Twitter className="h-4 w-4 mr-2" />
                   X (Twitter)
+                </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start hover:text-primary hover:bg-primary/10"
+                asChild
+              >
+                <a href="mailto:n3o@n3os.com">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email Us
                 </a>
               </Button>
             </div>
