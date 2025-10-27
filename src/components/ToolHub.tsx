@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Wand2, Music, Newspaper, MessageSquare, Send, Loader2, ExternalLink, Upload } from "lucide-react";
+import { X, Wand2, Music, Newspaper, MessageSquare, Send, Loader2, ExternalLink, Upload, Scissors } from "lucide-react";
+import { AudioTrimmer } from "./AudioTrimmer";
+import { ChordDisplay } from "./ChordDisplay";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,14 +36,18 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
   const [selectedTool, setSelectedTool] = useState<Tool>("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
   const [coverArtPrompt, setCoverArtPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [coverArtLoading, setCoverArtLoading] = useState(false);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loadingNews, setLoadingNews] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [chordAnalysis, setChordAnalysis] = useState<string | null>(null);
+  const [chordLoading, setChordLoading] = useState(false);
+  const [trimRange, setTrimRange] = useState<[number, number]>([0, 30]);
+  const [showTrimmer, setShowTrimmer] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -84,7 +90,7 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || chatLoading) return;
 
     const userMessage: Message = { role: "user", content: inputMessage };
     setMessages([userMessage]);
@@ -93,9 +99,9 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
   };
 
   const handleGenerateCoverArt = async () => {
-    if (!coverArtPrompt.trim() || isLoading) return;
+    if (!coverArtPrompt.trim() || coverArtLoading) return;
 
-    setIsLoading(true);
+    setCoverArtLoading(true);
     setGeneratedImage(null);
 
     try {
@@ -120,7 +126,7 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setCoverArtLoading(false);
     }
   };
 
@@ -137,13 +143,27 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
         return;
       }
       setAudioFile(file);
+      setChordAnalysis(null);
+      
+      // Check if audio is longer than 30 seconds to show trimmer
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(file);
+      audio.addEventListener('loadedmetadata', () => {
+        if (audio.duration > 30) {
+          setShowTrimmer(true);
+        } else {
+          setShowTrimmer(false);
+          setTrimRange([0, audio.duration]);
+        }
+        URL.revokeObjectURL(audio.src);
+      });
     }
   };
 
   const handleDetectChords = async () => {
-    if (!audioFile || isLoading) return;
+    if (!audioFile || chordLoading) return;
 
-    setIsLoading(true);
+    setChordLoading(true);
     setChordAnalysis(null);
 
     try {
@@ -154,7 +174,9 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
         const { data, error } = await supabase.functions.invoke('detect-chords', {
           body: { 
             audioData: base64Audio,
-            fileName: audioFile.name
+            fileName: audioFile.name,
+            trimStart: trimRange[0],
+            trimEnd: trimRange[1]
           }
         });
 
@@ -162,12 +184,13 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
         if (data.analysis) {
           setChordAnalysis(data.analysis);
+          setShowTrimmer(false); // Hide trimmer after analysis
           toast({
             title: "Analysis Complete",
             description: "Chord detection completed successfully!",
           });
         }
-        setIsLoading(false);
+        setChordLoading(false);
       };
       reader.readAsDataURL(audioFile);
     } catch (error) {
@@ -177,8 +200,15 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
         description: "Failed to detect chords. Please try again.",
         variant: "destructive",
       });
-      setIsLoading(false);
+      setChordLoading(false);
     }
+  };
+
+  const parseChords = (analysis: string) => {
+    // Extract chord names from the analysis text
+    const chordPattern = /([A-G][#b♭♯]?(?:m|maj|min|dim|aug|sus[24]?|add[0-9]|[0-9])*)/g;
+    const matches = analysis.match(chordPattern) || [];
+    return matches.map(chord => ({ name: chord }));
   };
 
   if (showFullscreen) {
@@ -300,11 +330,11 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                         }
                       }}
                       className="min-h-[120px] resize-none focus:ring-2 focus:ring-primary focus:shadow-glow transition-all bg-background/50"
-                      disabled={isLoading}
+                      disabled={chatLoading}
                     />
                     <Button
                       onClick={handleSendMessage}
-                      disabled={isLoading || !inputMessage.trim()}
+                      disabled={chatLoading || !inputMessage.trim()}
                       className="w-full bg-primary hover:bg-primary/90"
                       size="lg"
                     >
@@ -332,15 +362,15 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                     value={coverArtPrompt}
                     onChange={(e) => setCoverArtPrompt(e.target.value)}
                     className="min-h-[100px] bg-background/50 border-border/50 focus:border-primary"
-                    disabled={isLoading}
+                    disabled={coverArtLoading}
                   />
 
                   <Button
                     onClick={handleGenerateCoverArt}
-                    disabled={isLoading || !coverArtPrompt.trim()}
+                    disabled={coverArtLoading || !coverArtPrompt.trim()}
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    {isLoading ? (
+                    {coverArtLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Generating...
@@ -370,11 +400,11 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
             {/* Chord Detector */}
             {selectedTool === "chord-detector" && (
-              <div className="flex-1 flex flex-col p-6 space-y-4">
+              <div className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto">
                 <div>
                   <h3 className="text-xl font-bold mb-2">Chord Detector</h3>
                   <p className="text-muted-foreground">
-                    Upload an audio file (WAV, MP3, or FLAC) to detect chords.
+                    Upload an audio file (WAV, MP3, or FLAC) to detect chords. Maximum 30 seconds of audio will be analyzed.
                   </p>
                 </div>
 
@@ -391,20 +421,27 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full"
-                    disabled={isLoading}
+                    disabled={chordLoading}
                   >
                     <Upload className="mr-2 h-4 w-4" />
                     {audioFile ? audioFile.name : 'Select Audio File'}
                   </Button>
                 </Card>
 
+                {audioFile && showTrimmer && !chordAnalysis && (
+                  <AudioTrimmer 
+                    audioFile={audioFile} 
+                    onTrim={(start, end) => setTrimRange([start, end])}
+                  />
+                )}
+
                 {audioFile && (
                   <Button
                     onClick={handleDetectChords}
-                    disabled={isLoading}
+                    disabled={chordLoading}
                     className="w-full bg-primary hover:bg-primary/90"
                   >
-                    {isLoading ? (
+                    {chordLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Analyzing...
@@ -419,10 +456,13 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                 )}
 
                 {chordAnalysis && (
-                  <Card className="flex-1 overflow-auto p-4 bg-card/50">
-                    <h4 className="font-semibold mb-2">Analysis Results:</h4>
-                    <pre className="whitespace-pre-wrap text-sm">{chordAnalysis}</pre>
-                  </Card>
+                  <div className="space-y-4">
+                    <ChordDisplay chords={parseChords(chordAnalysis)} />
+                    <Card className="p-4 bg-card/50">
+                      <h4 className="font-semibold mb-2">Full Analysis:</h4>
+                      <pre className="whitespace-pre-wrap text-sm text-muted-foreground">{chordAnalysis}</pre>
+                    </Card>
+                  </div>
                 )}
               </div>
             )}
