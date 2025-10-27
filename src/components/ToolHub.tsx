@@ -348,8 +348,8 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
             {/* Cover Art Generator */}
             {selectedTool === "cover-art" && (
-              <div className="flex-1 flex flex-col p-6 space-y-4">
-                <div className="space-y-4">
+              <div className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-4 flex-shrink-0">
                   <div>
                     <h3 className="text-xl font-bold mb-2">Cover Art Generator</h3>
                     <p className="text-muted-foreground">
@@ -385,12 +385,12 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                 </div>
 
                 {generatedImage && (
-                  <div className="flex-1 overflow-auto">
+                  <div className="flex-shrink-0">
                     <Card className="p-4 bg-card/50 border-primary/20">
                       <img
                         src={generatedImage}
                         alt="Generated cover art"
-                        className="w-full h-auto rounded-lg"
+                        className="w-full h-auto rounded-lg max-h-[600px] object-contain"
                       />
                     </Card>
                   </div>

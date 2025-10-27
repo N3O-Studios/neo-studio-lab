@@ -35,7 +35,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Generate professional album cover art: ${prompt}. Make it artistic, high quality, and suitable for music albums.`
+            content: `Generate professional album cover art: ${prompt}. Make it artistic, high quality, and suitable for music albums. IMPORTANT: Do not include any text, letters, numbers, words, or typography in the image. Create a purely visual artwork without any written elements.`
           }
         ],
         modalities: ['image', 'text']
