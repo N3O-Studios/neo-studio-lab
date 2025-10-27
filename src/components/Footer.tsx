@@ -1,5 +1,6 @@
 import { Youtube, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export const Footer = () => {
   return (
@@ -80,12 +81,12 @@ export const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-sm font-semibold text-foreground/90">Legal</h4>
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <button className="text-left hover:text-primary transition-colors">
+              <Link to="/terms" className="text-left hover:text-primary transition-colors">
                 Terms of Service
-              </button>
-              <button className="text-left hover:text-primary transition-colors">
+              </Link>
+              <Link to="/privacy" className="text-left hover:text-primary transition-colors">
                 Privacy Policy
-              </button>
+              </Link>
             </div>
           </div>
         </div>
