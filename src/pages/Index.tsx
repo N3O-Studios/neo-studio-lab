@@ -6,8 +6,9 @@ import { ToolHub } from "@/components/ToolHub";
 import { Biography } from "@/components/Biography";
 import { Footer } from "@/components/Footer";
 import { AdminDashboard } from "@/components/AdminDashboard";
+import { ProfileMenu } from "@/components/ProfileMenu";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
@@ -29,10 +30,6 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   if (showAdminDashboard && isAdmin) {
     return (
@@ -41,10 +38,7 @@ const Index = () => {
           <Button variant="outline" onClick={() => setShowAdminDashboard(false)}>
             Back to Site
           </Button>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          {user && <ProfileMenu user={user} />}
         </div>
         <AdminDashboard />
       </div>
@@ -61,10 +55,7 @@ const Index = () => {
           </Button>
         )}
         {user ? (
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <ProfileMenu user={user} />
         ) : (
           <Button variant="outline" onClick={() => navigate("/auth")}>
             Login
