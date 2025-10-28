@@ -5,12 +5,16 @@ import { Hero } from "@/components/Hero";
 import { ToolHub } from "@/components/ToolHub";
 import { Biography } from "@/components/Biography";
 import { Footer } from "@/components/Footer";
+import { AdminDashboard } from "@/components/AdminDashboard";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
   const [isToolHubOpen, setIsToolHubOpen] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,9 +34,32 @@ const Index = () => {
     navigate("/auth");
   };
 
+  if (showAdminDashboard && isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="fixed top-4 right-4 z-40 flex gap-2">
+          <Button variant="outline" onClick={() => setShowAdminDashboard(false)}>
+            Back to Site
+          </Button>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+        <AdminDashboard />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-4 right-4 z-40 flex gap-2">
+        {isAdmin && (
+          <Button variant="default" onClick={() => setShowAdminDashboard(true)}>
+            <Shield className="mr-2 h-4 w-4" />
+            Admin
+          </Button>
+        )}
         {user ? (
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
