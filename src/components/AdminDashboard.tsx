@@ -46,13 +46,9 @@ export const AdminDashboard = () => {
   };
 
   const loadUsers = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(10);
-    
-    setUsers(data || []);
+    // Note: With strict RLS, admins can only see user count, not individual profiles
+    // Users list removed for privacy - only showing aggregated stats
+    setUsers([]);
   };
 
   const loadNews = async () => {
@@ -161,22 +157,18 @@ export const AdminDashboard = () => {
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Users</CardTitle>
-              <CardDescription>Latest registered users</CardDescription>
+              <CardTitle>User Statistics</CardTitle>
+              <CardDescription>
+                Individual user profiles are protected for privacy. Only aggregated statistics are available.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{user.username}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-2xl font-bold mb-2">{stats.totalUsers} Total Users</p>
+                <p className="text-sm text-muted-foreground">
+                  User profiles and chat messages are end-to-end secured and cannot be accessed by admins.
+                </p>
               </div>
             </CardContent>
           </Card>

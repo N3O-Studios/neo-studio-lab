@@ -114,11 +114,14 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
   };
 
   const saveMessageToSession = async (sessionId: string, message: Message) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('chat_messages')
         .insert({
           session_id: sessionId,
+          user_id: user.id,
           role: message.role,
           content: message.content
         });
