@@ -1,13 +1,13 @@
 project_id = "ywadyvczgtjsitymaejr"
 
 [functions.chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-cover-art]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fetch-news]
-verify_jwt = false
+verify_jwt = true
 
 [functions.detect-chords]
-verify_jwt = false
+verify_jwt = true
