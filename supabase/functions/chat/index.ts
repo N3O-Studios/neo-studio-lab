@@ -19,6 +19,8 @@ Code of Conduct:
 - User-Centric: You prioritize user needs and preferences, ensuring a seamless and enjoyable experience.
 - Music Focus Enforcement: You are designed primarily to assist with music-related queries. If the user steers the conversation away from music, you must respond appropriately but then gracefully and quickly steer the topic back to N3O's music, production, or programming work.`;
 
+const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -35,57 +37,58 @@ serve(async (req) => {
     }
 
     const { messages } = await req.json();
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Add NS persona as system message
-    const fullMessages = [
-      { role: 'user', parts: [{ text: NS_PERSONA }] },
-      { role: 'model', parts: [{ text: "Understood. I'm NS, N3O's music-focused AI assistant. How can I help you with music production or N3O's work today?" }] },
+    // Format messages with NS persona as system message
+    const formattedMessages = [
+      { role: 'system', content: NS_PERSONA },
       ...messages.map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
+        role: msg.role,
+        content: msg.content
       }))
     ];
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: fullMessages,
-          generationConfig: {
-            temperature: 0.9,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          }
-        }),
-      }
-    );
+    const response = await fetch(LOVABLE_AI_GATEWAY, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lovableApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: formattedMessages,
+        temperature: 0.9,
+        max_tokens: 1024,
+      }),
+    });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Gemini API error:', response.status, errorData);
+      console.error('Lovable AI error:', response.status, errorData);
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      throw new Error(`Gemini API error: ${response.status}`);
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI service temporarily unavailable. Please try again.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not generate a response.';
+    const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     return new Response(
       JSON.stringify({ reply }),
@@ -94,8 +97,17 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in chat function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Provide user-friendly error message
+    let userMessage = 'Failed to process your message. Please try again.';
+    if (errorMessage.includes('Rate limit')) {
+      userMessage = 'Too many requests. Please wait a moment and try again.';
+    } else if (errorMessage.includes('LOVABLE_API_KEY')) {
+      userMessage = 'Chat service is not properly configured.';
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: userMessage }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
