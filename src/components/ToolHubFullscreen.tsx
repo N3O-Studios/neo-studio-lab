@@ -60,6 +60,41 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-send initial message if it's from user
+  useEffect(() => {
+    if (initialMessages.length > 0 && 
+        initialMessages[initialMessages.length - 1].role === 'user' &&
+        messages.length === initialMessages.length &&
+        !isLoading) {
+      const sendInitialMessage = async () => {
+        setIsLoading(true);
+        try {
+          const { data, error } = await supabase.functions.invoke('chat', {
+            body: { messages: initialMessages }
+          });
+
+          if (error) throw error;
+
+          const assistantMessage: Message = {
+            role: "assistant",
+            content: data.reply || "Sorry, I couldn't process that."
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        } catch (error) {
+          console.error('Error sending initial message:', error);
+          toast({
+            title: "Error",
+            description: "Failed to send message. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      sendInitialMessage();
+    }
+  }, [initialMessages]);
+
   const loadSessions = async () => {
     try {
       const { data, error } = await supabase
