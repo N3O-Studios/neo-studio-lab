@@ -47,8 +47,8 @@ export const Biography = () => {
               </a>
 
               <a 
-                href="https://www.youtube.com/@N3O-STUD1O5" 
-                target="_blank" 
+                href="https://www.youtube.com/@n3ostudios" 
+                target="_blank"
                 rel="noopener noreferrer"
                 className="group"
               >
