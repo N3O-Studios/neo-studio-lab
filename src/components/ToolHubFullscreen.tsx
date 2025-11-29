@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTipJarTrigger } from "@/hooks/useTipJarTrigger";
+import { TipJar } from "./TipJar";
+import { ChatMessageContent } from "./ChatMessageContent";
 
 interface Message {
   role: "user" | "assistant";
@@ -35,6 +38,7 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
   const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { shouldShowTipJar, incrementMessages, dismiss } = useTipJarTrigger();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -130,6 +134,9 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
         content: data.reply || "Sorry, I couldn't process that."
       };
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Increment message count for tip jar (counts the exchange)
+      incrementMessages();
 
       // Auto-save to current session if exists
       if (currentSessionId && user) {
@@ -395,7 +402,11 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
                     : "bg-card border border-border"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                {msg.role === "user" ? (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                ) : (
+                  <ChatMessageContent content={msg.content} />
+                )}
               </div>
             </div>
           ))}
@@ -406,6 +417,14 @@ export const ToolHubFullscreen = ({ isOpen, onClose, initialMessages = [], onBac
               </div>
             </div>
           )}
+          
+          {/* Tip Jar */}
+          {shouldShowTipJar && (
+            <div className="max-w-md mx-auto">
+              <TipJar onDismiss={dismiss} />
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
 
