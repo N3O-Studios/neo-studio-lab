@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ToolHubFullscreen } from "./ToolHubFullscreen";
+import { useTipJarTrigger } from "@/hooks/useTipJarTrigger";
+import { TipJar } from "./TipJar";
 
 interface ToolHubProps {
   isOpen: boolean;
@@ -51,6 +53,7 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { shouldShowTipJar, incrementGenerations, dismiss } = useTipJarTrigger();
 
   useEffect(() => {
     if (selectedTool === "news") {
@@ -113,6 +116,7 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
 
       if (data.image) {
         setGeneratedImage(data.image);
+        incrementGenerations(); // Track for tip jar
         toast({
           title: "Success",
           description: "Cover art generated successfully!",
@@ -385,7 +389,7 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                 </div>
 
                 {generatedImage && (
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 space-y-4">
                     <Card className="p-4 bg-card/50 border-primary/20">
                       <img
                         src={generatedImage}
@@ -393,6 +397,11 @@ export const ToolHub = ({ isOpen, onClose }: ToolHubProps) => {
                         className="w-full h-auto rounded-lg max-h-[600px] object-contain"
                       />
                     </Card>
+                    
+                    {/* Tip Jar after image generation */}
+                    {shouldShowTipJar && (
+                      <TipJar onDismiss={dismiss} />
+                    )}
                   </div>
                 )}
               </div>
