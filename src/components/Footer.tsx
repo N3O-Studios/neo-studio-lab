@@ -50,8 +50,8 @@ export const Footer = () => {
                 className="justify-start hover:text-primary hover:bg-primary/10"
                 asChild
               >
-                <a
-                  href="https://www.youtube.com/@N3O-STUD1O5"
+              <a
+                  href="https://www.youtube.com/@n3ostudios"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
