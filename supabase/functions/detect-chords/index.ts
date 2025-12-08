@@ -6,13 +6,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Extract song name from filename
+function extractSongName(fileName: string): string {
+  return fileName
+    .replace(/\.(mp3|wav|m4a|flac|ogg|aac)$/i, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 serve(async (req) => {
+  const startTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -32,9 +42,10 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Detecting chords from audio:', fileName);
+    const songName = extractSongName(fileName || 'Unknown');
+    console.log(`Detecting chords for: "${songName}" (file: ${fileName})`);
 
-    // Use Lovable AI with audio analysis capabilities
+    // Use Gemini 2.5 Flash for speed - ask it to search its knowledge for existing chords first
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -42,30 +53,51 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: 'You are a music theory expert specializing in chord detection and analysis. Analyze audio and provide detailed chord progressions with timestamps.'
+            content: `You are an expert music theorist and chord analyst. Your task is to provide accurate chord progressions for songs.
+
+IMPORTANT PRIORITY ORDER:
+1. FIRST: If the song name matches a known released song, provide the VERIFIED chord progression from your knowledge. Search your training data for official/community-verified chord charts.
+2. SECOND: If you recognize the artist/song but aren't 100% certain of chords, provide your best educated analysis based on the artist's typical style and the song's genre.
+3. THIRD: For completely unknown/original songs, analyze based on common progressions in similar genres.
+
+Always respond in this JSON format:
+{
+  "songIdentified": true/false,
+  "songName": "identified song name or provided name",
+  "artist": "artist if known or 'Unknown'",
+  "key": "e.g. C Major, A Minor",
+  "tempo": "estimated BPM",
+  "timeSignature": "e.g. 4/4",
+  "chordProgression": [
+    {"chord": "Am", "timestamp": "0:00", "duration": "2 bars"},
+    {"chord": "F", "timestamp": "0:08", "duration": "2 bars"}
+  ],
+  "sections": {
+    "intro": ["Am", "F"],
+    "verse": ["Am", "F", "C", "G"],
+    "chorus": ["F", "G", "Am", "C"]
+  },
+  "confidence": "high/medium/low",
+  "source": "verified chart/analysis/estimated",
+  "notes": "any additional notes about the song or chords"
+}`
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Analyze this audio file and detect the chord progression. Provide: 1) Main key, 2) Chord progression with approximate timestamps, 3) Tempo (BPM), 4) Time signature. Format as JSON.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: audioData
-                }
-              }
-            ]
+            content: `Analyze and provide the chord progression for this song: "${songName}"
+
+If this is a known released song, please use verified chord charts from your knowledge. If it's an original or unknown song, provide your best analysis based on genre conventions.`
           }
         ]
       })
     });
+
+    const elapsed = Date.now() - startTime;
+    console.log(`AI response received in ${elapsed}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -73,22 +105,19 @@ serve(async (req) => {
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          JSON.stringify({ error: 'Service temporarily unavailable.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      return new Response(
-        JSON.stringify({ error: 'Failed to detect chords' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Failed to analyze chords');
     }
 
     const data = await response.json();
@@ -98,12 +127,14 @@ serve(async (req) => {
       throw new Error('No analysis in response');
     }
 
-    console.log('Chord detection completed');
+    const totalTime = Date.now() - startTime;
+    console.log(`Chord detection completed in ${totalTime}ms`);
 
     return new Response(
       JSON.stringify({ 
         analysis: analysisText,
-        success: true 
+        success: true,
+        processingTime: totalTime
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
