@@ -6,15 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Extract song name from filename
-function extractSongName(fileName: string): string {
-  return fileName
-    .replace(/\.(mp3|wav|m4a|flac|ogg|aac)$/i, '')
-    .replace(/[-_]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 serve(async (req) => {
   const startTime = Date.now();
   
@@ -42,10 +33,10 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const songName = extractSongName(fileName || 'Unknown');
-    console.log(`Detecting chords for: "${songName}" (file: ${fileName})`);
+    console.log(`Analyzing audio file: ${fileName}`);
 
-    // Use Gemini 2.5 Flash for speed - ask it to search its knowledge for existing chords first
+    // Gemini 2.5 Flash supports audio analysis natively
+    // Pass the audio data URL directly - Gemini can process audio/mpeg, audio/wav, etc.
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -57,40 +48,44 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert music theorist and chord analyst. Your task is to provide accurate chord progressions for songs.
+            content: `You are an expert music theorist and audio analyst. Listen to the provided audio and detect the chord progression.
 
-IMPORTANT PRIORITY ORDER:
-1. FIRST: If the song name matches a known released song, provide the VERIFIED chord progression from your knowledge. Search your training data for official/community-verified chord charts.
-2. SECOND: If you recognize the artist/song but aren't 100% certain of chords, provide your best educated analysis based on the artist's typical style and the song's genre.
-3. THIRD: For completely unknown/original songs, analyze based on common progressions in similar genres.
+ANALYZE THE ACTUAL AUDIO - detect chords by ear from what you hear in the recording.
 
-Always respond in this JSON format:
+Respond ONLY in this JSON format:
 {
-  "songIdentified": true/false,
-  "songName": "identified song name or provided name",
-  "artist": "artist if known or 'Unknown'",
   "key": "e.g. C Major, A Minor",
-  "tempo": "estimated BPM",
+  "tempo": "estimated BPM as number",
   "timeSignature": "e.g. 4/4",
   "chordProgression": [
-    {"chord": "Am", "timestamp": "0:00", "duration": "2 bars"},
-    {"chord": "F", "timestamp": "0:08", "duration": "2 bars"}
+    {"chord": "Am", "timestamp": "0:00"},
+    {"chord": "F", "timestamp": "0:04"},
+    {"chord": "C", "timestamp": "0:08"},
+    {"chord": "G", "timestamp": "0:12"}
   ],
   "sections": {
-    "intro": ["Am", "F"],
+    "intro": ["Am"],
     "verse": ["Am", "F", "C", "G"],
     "chorus": ["F", "G", "Am", "C"]
   },
   "confidence": "high/medium/low",
-  "source": "verified chart/analysis/estimated",
-  "notes": "any additional notes about the song or chords"
+  "notes": "brief notes about the harmonic structure"
 }`
           },
           {
             role: 'user',
-            content: `Analyze and provide the chord progression for this song: "${songName}"
-
-If this is a known released song, please use verified chord charts from your knowledge. If it's an original or unknown song, provide your best analysis based on genre conventions.`
+            content: [
+              {
+                type: 'text',
+                text: `Analyze this audio and detect all chords. Listen carefully to identify the key, tempo, and full chord progression with timestamps.`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: audioData
+                }
+              }
+            ]
           }
         ]
       })
@@ -117,7 +112,7 @@ If this is a known released song, please use verified chord charts from your kno
         );
       }
 
-      throw new Error('Failed to analyze chords');
+      throw new Error(`AI analysis failed: ${errorText}`);
     }
 
     const data = await response.json();
