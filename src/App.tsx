@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import LegacyV1 from "./pages/LegacyV1";
 import Auth from "./pages/Auth";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -19,6 +20,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/legacy-v1" element={<LegacyV1 />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
