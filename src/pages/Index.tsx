@@ -182,10 +182,11 @@ const Index = () => {
           </div>
 
           <p className="text-lg text-muted-foreground leading-relaxed">
-            n3os' AI Agent Systems is designed to be a website catering to all your AI needs. Using carefully designed bots for each task, we create tools for activities you didn't know you needed tools for!
+            &gt; n3os' AI Agent Systems is designed to cater to all your AI needs. Using carefully crafted bots built for specific tasks, we create tools for activities you never knew you needed tools for!
           </p>
-          <p className="text-base text-muted-foreground/80 leading-relaxed">
-            I, n3o, also make music — check the icons below to be linked to different socials!
+          <p className="text-base text-muted-foreground/80 leading-relaxed mt-4">
+            I'm n3o, and I also make music — check the icons below to find me on socials!
+            <span className="inline-block w-[2px] h-[1em] bg-secondary ml-0.5 align-middle animate-[blink_1s_step-end_infinite]" />
           </p>
 
           <div className="flex items-center justify-center gap-4 pt-4">
