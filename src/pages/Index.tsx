@@ -181,12 +181,11 @@ const Index = () => {
             <span className="text-xs font-mono text-muted-foreground tracking-wide uppercase">About Us</span>
           </div>
 
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            &gt; n3os' AI Agent Systems is designed to cater to all your AI needs. Using carefully crafted bots built for specific tasks, we create tools for activities you never knew you needed tools for!
+          <p className="text-lg text-muted-foreground leading-relaxed font-mono">
+            <span className="font-bold text-foreground drop-shadow-[0_0_6px_hsl(var(--secondary)/0.6)]">&gt;</span> n3os' AI Agent Systems is designed to cater to all your AI needs. Using carefully crafted bots built for specific tasks, we create tools for activities you never knew you needed tools for!
           </p>
-          <p className="text-base text-muted-foreground/80 leading-relaxed mt-4">
-            I'm n3o, and I also make music — check the icons below to find me on socials!
-            <span className="inline-block w-[2px] h-[1em] bg-secondary ml-0.5 align-middle animate-[blink_1s_step-end_infinite]" />
+          <p className="text-base text-muted-foreground/80 leading-relaxed mt-4 font-mono">
+            I'm n3o, and I also make music — check the icons below to find me on socials!<span className="font-bold text-foreground drop-shadow-[0_0_6px_hsl(var(--secondary)/0.6)] animate-[blink_1s_step-end_infinite]">_</span>
           </p>
 
           <div className="flex items-center justify-center gap-4 pt-4">
